@@ -1,4 +1,4 @@
-"""Entry point for project_name."""
+"""Entry point for cube_list_printer."""
 
 from .cli import main  # pragma: no cover
 
