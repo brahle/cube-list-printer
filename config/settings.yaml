@@ -1,0 +1,11 @@
+paths:
+  csv_file: "data/boosters.csv"
+  scryfall_bulk: "data/scryfall_bulk.json"
+  image_cache_dir: "data/images"
+  mana_icons_dir: "data/icons"
+  output_pdf: "out/BoosterCards.pdf"
+
+fetch_delay: 1.0  # one-second delay between Scryfall API calls
+card_width_mm: 63  # MTG card width in mm
+card_height_mm: 88 # MTG card height in mm
+dpi: 300
