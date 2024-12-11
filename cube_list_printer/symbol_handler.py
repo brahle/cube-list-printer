@@ -1,13 +1,15 @@
+import logging
 import os
 import time
-import logging
-import requests
-from typing import Dict
-from PIL import Image
 from io import BytesIO
+from typing import Dict
+
 import cairosvg
+import requests
+from PIL import Image
 
 SYMBOL_API = "https://api.scryfall.com/symbology"
+
 
 def fetch_symbols(symbol_cache_dir: str, fetch_delay: float = 0.2) -> Dict[str, str]:
     """

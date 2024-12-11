@@ -1,5 +1,6 @@
 import os
 from typing import Any, Dict, List
+
 from PIL import Image
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -23,8 +24,10 @@ ROWS = 3
 MARGIN_X = 25
 MARGIN_Y = 25
 
+
 def mm_to_points(mm_value: float) -> float:
     return mm_value * (72.0 / 25.4)
+
 
 def load_mana_icons(symbol_map: Dict[str, str]) -> Dict[str, Image.Image]:
     """
@@ -41,6 +44,7 @@ def load_mana_icons(symbol_map: Dict[str, str]) -> Dict[str, Image.Image]:
             bg.alpha_composite(img)
             icon_map[sym] = bg.convert("RGBA")
     return icon_map
+
 
 def draw_mana_cost_segment(
     c: canvas.Canvas, mana_cost: str, x: float, y: float, icon_map: Dict[str, Image.Image]
@@ -72,6 +76,7 @@ def draw_mana_cost_segment(
 
     return offset_x - SEPARATOR_PADDING if offset_x > 0 else 0
 
+
 def draw_mana_cost_full(
     c: canvas.Canvas, mana_cost: str, x: float, y: float, icon_map: Dict[str, Image.Image]
 ) -> float:
@@ -87,6 +92,7 @@ def draw_mana_cost_full(
             offset_x += sep_width + SEPARATOR_PADDING
 
     return offset_x + 4
+
 
 def draw_card_background(
     c: canvas.Canvas, bg_image_path: str, x: float, y: float, width: float, height: float
@@ -107,11 +113,13 @@ def draw_card_background(
     )
     c.restoreState()
 
+
 def draw_card_title(c: canvas.Canvas, booster_id: str, x: float, y: float, width: float, height: float) -> None:
     c.setFont("Helvetica-Bold", TITLE_FONT_SIZE)
     c.setFillColor(colors.black)
     booster_text_width = c.stringWidth(booster_id, "Helvetica-Bold", TITLE_FONT_SIZE)
     c.drawString(x + (width - booster_text_width) / 2, y + height - TEXT_MARGIN_TOP, booster_id)
+
 
 def draw_card_list(
     c: canvas.Canvas,
@@ -131,11 +139,14 @@ def draw_card_list(
         mana_cost = card.get("mana_cost", "")
 
         offset = 0.0
-        if mana_cost:
-            offset = draw_mana_cost_full(c, mana_cost, x + TEXT_MARGIN_LEFT, current_y, icon_map)
-
         c.drawString(x + TEXT_MARGIN_LEFT + offset, current_y, card_name)
+
+        offset = c.stringWidth(card_name, "Helvetica", FONT_SIZE) + 4
+        if mana_cost:
+            offset = draw_mana_cost_full(c, mana_cost, x + TEXT_MARGIN_LEFT + offset, current_y, icon_map)
+
         current_y -= LINE_SPACING
+
 
 def create_card(
     c: canvas.Canvas,
@@ -152,13 +163,16 @@ def create_card(
     draw_card_title(c, booster_id, x, y, width, height)
     draw_card_list(c, cards, icon_map, x, y, width, height)
 
+
 def get_background_image_path(most_valuable_card: Dict[str, Any]) -> str:
     bg_image_path = most_valuable_card.get("image_local_path", "")
     if not bg_image_path or not os.path.exists(bg_image_path):
         from cube_list_printer.image_handler import generate_placeholder_image
+
         s_id = most_valuable_card.get("scryfall_id", "unknown")
         bg_image_path = generate_placeholder_image("data/images", s_id)
     return bg_image_path
+
 
 def generate_pdf(
     output_path: str,
