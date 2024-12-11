@@ -1,6 +1,7 @@
 .ONESHELL:
 ENV_PREFIX=$(shell python -c "if __import__('pathlib').Path('.venv/bin/pip').exists(): print('.venv/bin/')")
 USING_POETRY=$(shell grep "tool.poetry" pyproject.toml && echo "yes")
+PY_LINE_LENGTH=119
 
 .PHONY: help
 help:             ## Show the help.
@@ -27,14 +28,14 @@ install:          ## Install the project in dev mode.
 .PHONY: fmt
 fmt:              ## Format code using black & isort.
 	$(ENV_PREFIX)isort cube_list_printer/
-	$(ENV_PREFIX)black -l 79 cube_list_printer/
-	$(ENV_PREFIX)black -l 79 tests/
+	$(ENV_PREFIX)black -l $(PY_LINE_LENGTH) cube_list_printer/
+	$(ENV_PREFIX)black -l $(PY_LINE_LENGTH) tests/
 
 .PHONY: lint
 lint:             ## Run pep8, black, mypy linters.
-	$(ENV_PREFIX)flake8 cube_list_printer/
-	$(ENV_PREFIX)black -l 79 --check cube_list_printer/
-	$(ENV_PREFIX)black -l 79 --check tests/
+	$(ENV_PREFIX)flake8 --max-line-length $(PY_LINE_LENGTH) cube_list_printer/
+	$(ENV_PREFIX)black -l $(PY_LINE_LENGTH) --check cube_list_printer/
+	$(ENV_PREFIX)black -l $(PY_LINE_LENGTH) --check tests/
 	$(ENV_PREFIX)mypy --ignore-missing-imports cube_list_printer/
 
 .PHONY: test
