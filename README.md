@@ -1,77 +1,140 @@
+# Cube List Printer
 
-# Python Project Template
+**Cube List Printer** is a Python-based utility for generating PDF layouts of Magic: The Gathering booster pack representations from a CSV input. It integrates Scryfall’s bulk data and symbology APIs to fetch card details and mana symbols, rendering each booster’s cards along with their mana costs and a background image of their most valuable card.
 
-A low dependency and really simple to start project template for Python Projects.
-
-### HOW TO USE THIS TEMPLATE
-
-> **DO NOT FORK** this is meant to be used from **[Use this template](https://github.com/brahle/python-project-template/generate)** feature.
-
-1. Click on **[Use this template](https://github.com/brahle/python-project-template/generate)**
-3. Give a name to your project
-   (e.g. `my_awesome_project` recommendation is to use all lowercase and underscores separation for repo names.)
-3. Wait until the first run of CI finishes
-   (Github Actions will process the template and commit to your new repo)
-4. If you want Automatic Release to [PyPI](https://pypi.org)
-  On the new repository `settings->secrets` add your `PYPI_API_TOKEN`
-4. Read the file [CONTRIBUTING.md](CONTRIBUTING.md)
-5. Then clone your new project and happy coding!
-
-> **NOTE**: **WAIT** until first CI run on github actions before cloning your new project.
-
-### What is included on this template?
-
-- 🖼️ Templates for starting multiple application types:
-  * **Basic low dependency** Python program (default) [use this template](https://github.com/brahle/python-project-template/generate)
-  * **Flask** with database, admin interface, restapi and authentication [use this template](https://github.com/rochacbruno/flask-project-template/generate).
-  **or Run `make init` after cloning to generate a new project based on a template.**
-- 📦 A basic [setup.py](setup.py) file to provide installation, packaging and distribution for your project.
-  Template uses setuptools because it's the de-facto standard for Python packages, you can run `make switch-to-poetry` later if you want.
-- 🤖 A [Makefile](Makefile) with the most useful commands to install, test, lint, format and release your project.
-- 📃 Documentation structure using [mkdocs](http://www.mkdocs.org)
-- 💬 Auto generation of change log using **gitchangelog** to keep a HISTORY.md file automatically based on your commit history on every release.
-- 🐋 A simple [Containerfile](Containerfile) to build a container image for your project.
-  `Containerfile` is a more open standard for building container images than Dockerfile, you can use buildah or docker with this file.
-- 🧪 Testing structure using [pytest](https://docs.pytest.org/en/latest/)
-- ✅ Code linting using [flake8](https://flake8.pycqa.org/en/latest/)
-- 🛳️ Automatic release to [PyPI](https://pypi.org) using [twine](https://twine.readthedocs.io/en/latest/) and github actions.
-- 🎯 Entry points to execute your program using `python -m <cube_list_printer>` or `$ cube_list_printer` with basic CLI argument parsing.
-- 🔄 Continuous integration using [Github Actions](.github/workflows/) with jobs to lint, test and release your project on Linux, Mac and Windows environments.
-
-> Curious about architectural decisions on this template? read [ABOUT_THIS_TEMPLATE.md](ABOUT_THIS_TEMPLATE.md)
-> If you want to contribute to this template please open an [issue](https://github.com/brahle/python-project-template/issues) or fork and send a PULL REQUEST.
-
-<!--  DELETE THE LINES ABOVE THIS AND WRITE YOUR PROJECT README BELOW -->
+This tool is especially useful for cube drafting events, mystery boosters, or custom sets where you want to visually represent the contents of boosters in a high-quality, printable format.
 
 ---
-# cube_list_printer
 
-[![CI](https://github.com/brahle/cube-list-printer/actions/workflows/main.yml/badge.svg)](https://github.com/brahle/cube-list-printer/actions/workflows/main.yml)
+## Features
 
-Awesome cube_list_printer created by brahle
+- **CSV Input**: Provide a CSV file listing boosters, each containing a set of 15 cards.
+- **Scryfall Integration**:
+  - Leverages a bulk JSON data file from Scryfall to retrieve card metadata (e.g., mana costs, image URIs, card values).
+  - Uses the Scryfall Symbology API to fetch and cache mana symbols as PNG images.
+- **On-the-Fly Image Fetching**: For any missing card images, the tool fetches them from Scryfall’s API (with configurable rate limiting).
+- **Clean PDF Output**:
+  - Each page displays a grid of boosters (default 3x3 layout).
+  - Each booster shows a background image of its most valuable card.
+  - All 15 cards are listed, alphabetically sorted by card name, alongside their mana costs.
+  - Automatic handling of hybrid, phyrexian, and colorless mana icons.
+  - Semi-transparent overlays improve legibility.
+  - Professional typography and spacing ensure a clean, aesthetic layout.
 
-## Install it from PyPI
+- **Customizable Layout**: Adjust card sizes, margins, fonts, and icon directories via a configuration file.
 
-```bash
-pip install cube_list_printer
-```
+---
+
+## Requirements
+
+- **Python 3.9+**
+- **Dependencies** (listed in `requirements.txt`):
+  - `pandas`
+  - `requests`
+  - `Pillow` (PIL)
+  - `PyYAML`
+  - `reportlab`
+  - `pytest` (for tests)
+  - `cairosvg` (for SVG to PNG conversion of mana symbols)
+
+Ensure you have `cairosvg` installed so that SVG mana symbols are correctly converted.
+
+---
+
+## Installation
+
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/your-username/cube_list_printer.git
+   cd cube_list_printer
+   ```
+
+2. **Install dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Prepare Data**:
+   - Place your `boosters.csv` file in a data directory (e.g., `data/mystery_booster_cube.csv`).
+   - Obtain a Scryfall bulk data file (JSON) and place it under the `data` directory. Update `config/settings.yaml` with the correct paths.
+
+4. **Configuration**:
+   - Check and edit `config/settings.yaml` to set paths and parameters for:
+     - CSV and bulk data file paths
+     - Image cache directory
+     - Symbol cache directory
+     - Output PDF name and dimensions
+     - Fetch delays to respect Scryfall’s rate limits
+
+---
 
 ## Usage
 
-```py
-from cube_list_printer import BaseClass
-from cube_list_printer import base_function
-
-BaseClass().base_method()
-base_function()
-```
-
+Generate the PDF:
 ```bash
-$ python -m cube_list_printer
-#or
-$ cube_list_printer
+python cube_list_printer/main.py data/mystery_booster_cube.csv
 ```
 
-## Development
+If no CSV file is passed as an argument, it will use the default specified in `settings.yaml`.
 
-Read the [CONTRIBUTING.md](CONTRIBUTING.md) file.
+On successful completion, a PDF file (e.g., `BoosterCards.pdf`) will be created, containing your arranged booster pages.
+
+---
+
+## Testing
+
+Basic tests are available in the `tests/` directory. You can run them with:
+```bash
+pytest
+```
+
+This will check core functions like data loading, image handling, and PDF generation for basic correctness.
+
+---
+
+## Customization
+
+You can customize various aspects by editing `config/settings.yaml`:
+
+- **Layout**:
+  Adjust card width/height in millimeters, margins, and font sizes.
+
+- **Symbol Fetch Delay**:
+  Control the delay between Scryfall API requests to avoid rate limiting.
+
+- **Hybrid Mana & Special Costs**:
+  The tool automatically handles symbols like `{W/U}` by sanitizing and caching them. No extra steps required.
+
+---
+
+## Known Limitations & Future Improvements
+
+- **Transparency of Icons**:
+  Icons are currently composited against a white background to avoid rendering issues. Full alpha transparency is limited by PDF rendering.
+
+- **Performance**:
+  For very large sets of boosters, consider pre-fetching images and symbols to speed up generation.
+
+- **Further Custom Layout Options**:
+  Future versions may allow more complex page layouts and styles.
+
+---
+
+## Contributing
+
+Contributions are welcome!
+- Fork the repository
+- Create a new feature branch
+- Submit a pull request
+
+Please ensure code is well-documented, tested, and follows Pythonic best practices.
+
+---
+
+## License
+
+This project is licensed under the Unlicense License. See the [LICENSE](LICENSE) file for details.
+
+---
+
+**Cube List Printer** brings automation and professional polish to printing custom booster sets, making your cube drafts more visually appealing and streamlined. Enjoy a smooth, ready-to-print PDF that showcases your curated Magic: The Gathering experience.
