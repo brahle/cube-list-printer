@@ -9,6 +9,8 @@ from reportlab.pdfgen import canvas
 
 TITLE_FONT_SIZE = 14
 FONT_SIZE = 10
+FONT_NAME = "Times-Roman"
+TITLE_FONT_NAME = "Times-Bold"
 
 SEPARATOR = " // "
 SEPARATOR_PADDING = 2
@@ -69,8 +71,8 @@ def draw_mana_cost_segment(
             offset_x += icon_size + SEPARATOR_PADDING
         else:
             # Draw text symbol if icon not found
-            c.setFont("Helvetica", FONT_SIZE)
-            text_width = c.stringWidth(sym, "Helvetica", FONT_SIZE)
+            c.setFont(FONT_NAME, FONT_SIZE)
+            text_width = c.stringWidth(sym, FONT_NAME, FONT_SIZE)
             c.drawString(x + offset_x, y, sym)
             offset_x += text_width + SEPARATOR_PADDING
 
@@ -82,12 +84,12 @@ def draw_mana_cost_full(
 ) -> float:
     parts = mana_cost.split(SEPARATOR)
     offset_x = 0.0
-    c.setFont("Helvetica", FONT_SIZE)
+    c.setFont(FONT_NAME, FONT_SIZE)
 
     for i, part in enumerate(parts):
         offset_x += draw_mana_cost_segment(c, part, x + offset_x, y, icon_map)
         if i < len(parts) - 1:
-            sep_width = c.stringWidth(SEPARATOR, "Helvetica", FONT_SIZE)
+            sep_width = c.stringWidth(SEPARATOR, FONT_NAME, FONT_SIZE)
             c.drawString(x + offset_x, y, SEPARATOR)
             offset_x += sep_width + SEPARATOR_PADDING
 
@@ -115,9 +117,9 @@ def draw_card_background(
 
 
 def draw_card_title(c: canvas.Canvas, booster_id: str, x: float, y: float, width: float, height: float) -> None:
-    c.setFont("Helvetica-Bold", TITLE_FONT_SIZE)
+    c.setFont(TITLE_FONT_NAME, TITLE_FONT_SIZE)
     c.setFillColor(colors.black)
-    booster_text_width = c.stringWidth(booster_id, "Helvetica-Bold", TITLE_FONT_SIZE)
+    booster_text_width = c.stringWidth(booster_id, TITLE_FONT_NAME, TITLE_FONT_SIZE)
     c.drawString(x + (width - booster_text_width) / 2, y + height - TEXT_MARGIN_TOP, booster_id)
 
 
@@ -130,7 +132,7 @@ def draw_card_list(
     width: float,
     height: float,
 ) -> None:
-    c.setFont("Helvetica", FONT_SIZE)
+    c.setFont(FONT_NAME, FONT_SIZE)
     start_y = y + height - TEXT_MARGIN_TOP - 20
     current_y = start_y
 
@@ -141,7 +143,7 @@ def draw_card_list(
         offset = 0.0
         c.drawString(x + TEXT_MARGIN_LEFT + offset, current_y, card_name)
 
-        offset = c.stringWidth(card_name, "Helvetica", FONT_SIZE) + 4
+        offset = c.stringWidth(card_name, FONT_NAME, FONT_SIZE) + 4
         if mana_cost:
             offset = draw_mana_cost_full(c, mana_cost, x + TEXT_MARGIN_LEFT + offset, current_y, icon_map)
 
