@@ -1,6 +1,5 @@
 import os
 from typing import Any, Dict, List
-
 from PIL import Image
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
@@ -10,77 +9,133 @@ from reportlab.pdfgen import canvas
 TITLE_FONT_SIZE = 14
 FONT_SIZE = 10
 
+SEPARATOR = " // "
+SEPARATOR_PADDING = 2
+BACKGROUND_OVERLAY_OPACITY = 0.7
+
+INTERNAL_MARGIN = 7
+TEXT_MARGIN_LEFT = 10
+TEXT_MARGIN_TOP = 25
+LINE_SPACING = FONT_SIZE + 2
+
+COLS = 3
+ROWS = 3
+MARGIN_X = 25
+MARGIN_Y = 25
 
 def mm_to_points(mm_value: float) -> float:
     return mm_value * (72.0 / 25.4)
 
-
-def load_mana_icons(icon_dir: str) -> Dict[str, Image.Image]:
+def load_mana_icons(symbol_map: Dict[str, str]) -> Dict[str, Image.Image]:
     """
-    Load mana icons, flatten them onto a white background.
+    Load mana icons from the cached PNG files obtained from Scryfall symbology.
+    symbol_map: { 'W': 'path/to/W.png', ... }
+
+    Return a dict { 'W': PIL.Image, 'U': PIL.Image, ... }
     """
     icon_map = {}
-    for mana_symbol in ["W", "U", "B", "R", "G", "C"]:
-        path = os.path.join(icon_dir, f"{mana_symbol}.png")
+    for sym, path in symbol_map.items():
         if os.path.exists(path):
             img = Image.open(path).convert("RGBA")
             bg = Image.new("RGBA", img.size, (255, 255, 255, 255))
             bg.alpha_composite(img)
-            # Convert back to RGB
-            final_img = bg.convert("RGB")
-            icon_map[mana_symbol] = final_img
+            icon_map[sym] = bg.convert("RGBA")
     return icon_map
-
 
 def draw_mana_cost_segment(
     c: canvas.Canvas, mana_cost: str, x: float, y: float, icon_map: Dict[str, Image.Image]
 ) -> float:
-    """
-    Draw a single mana cost segment at baseline y.
-    Icons and text bottom-align with baseline.
-    """
-    symbols = mana_cost.strip("{}").split("}{") if "{" in mana_cost else []
-    offset_x = 0
-    padding = 2
-    icon_size = FONT_SIZE  # icon size in points
+    if "{" in mana_cost:
+        symbols = mana_cost.strip("{}").split("}{")
+    else:
+        symbols = []
+
+    offset_x = 0.0
+    icon_size = FONT_SIZE
 
     for sym in symbols:
         sym = sym.upper()
+        # Some costs might be numeric like {2}, {3}, handle text fallback if no icon
+        # Also consider hybrid/complex symbols might not be in icon_map, handle gracefully
         if sym in icon_map:
-            # Use ImageReader for the PIL image
             img_reader = ImageReader(icon_map[sym])
-            # Bottom align: baseline at y means top of icon at y - 1
+            # Bottom align icon with text baseline. drawImage top aligns, so top = y - (icon_size - small_offset)
+            # We'll use y - (icon_size - 1) to shift slightly
             c.drawImage(img_reader, x + offset_x, y - 1, width=icon_size, height=icon_size, mask="auto")
-            offset_x += icon_size + padding
+            offset_x += icon_size + SEPARATOR_PADDING
         else:
-            # Draw as text
+            # Draw text symbol if icon not found
             c.setFont("Helvetica", FONT_SIZE)
             text_width = c.stringWidth(sym, "Helvetica", FONT_SIZE)
             c.drawString(x + offset_x, y, sym)
-            offset_x += text_width + padding
-    return offset_x - padding
+            offset_x += text_width + SEPARATOR_PADDING
 
+    return offset_x - SEPARATOR_PADDING if offset_x > 0 else 0
 
 def draw_mana_cost_full(
     c: canvas.Canvas, mana_cost: str, x: float, y: float, icon_map: Dict[str, Image.Image]
 ) -> float:
-    """
-    Draw mana cost which may contain multiple parts separated by " // ".
-    Each part is drawn with draw_mana_cost_segment, then ' // ' if needed.
-    """
-    parts = mana_cost.split(" // ")
-    offset_x: float = 0
+    parts = mana_cost.split(SEPARATOR)
+    offset_x = 0.0
     c.setFont("Helvetica", FONT_SIZE)
+
     for i, part in enumerate(parts):
         offset_x += draw_mana_cost_segment(c, part, x + offset_x, y, icon_map)
         if i < len(parts) - 1:
-            # Draw '//'
-            sep = "//"
-            sep_width = c.stringWidth(sep, "Helvetica", FONT_SIZE)
-            c.drawString(x + offset_x, y, sep)
-            offset_x += sep_width + 2
+            sep_width = c.stringWidth(SEPARATOR, "Helvetica", FONT_SIZE)
+            c.drawString(x + offset_x, y, SEPARATOR)
+            offset_x += sep_width + SEPARATOR_PADDING
+
     return offset_x + 4
 
+def draw_card_background(
+    c: canvas.Canvas, bg_image_path: str, x: float, y: float, width: float, height: float
+) -> None:
+    c.drawImage(bg_image_path, x, y, width=width, height=height, mask="auto")
+
+    c.saveState()
+    c.setFillColor(colors.whitesmoke)
+    c.setStrokeColor(colors.whitesmoke)
+    c.setFillAlpha(BACKGROUND_OVERLAY_OPACITY)
+    c.rect(
+        x + INTERNAL_MARGIN,
+        y + INTERNAL_MARGIN,
+        width - 2 * INTERNAL_MARGIN,
+        height - 2 * INTERNAL_MARGIN,
+        fill=1,
+        stroke=0,
+    )
+    c.restoreState()
+
+def draw_card_title(c: canvas.Canvas, booster_id: str, x: float, y: float, width: float, height: float) -> None:
+    c.setFont("Helvetica-Bold", TITLE_FONT_SIZE)
+    c.setFillColor(colors.black)
+    booster_text_width = c.stringWidth(booster_id, "Helvetica-Bold", TITLE_FONT_SIZE)
+    c.drawString(x + (width - booster_text_width) / 2, y + height - TEXT_MARGIN_TOP, booster_id)
+
+def draw_card_list(
+    c: canvas.Canvas,
+    cards: List[Dict[str, Any]],
+    icon_map: Dict[str, Image.Image],
+    x: float,
+    y: float,
+    width: float,
+    height: float,
+) -> None:
+    c.setFont("Helvetica", FONT_SIZE)
+    start_y = y + height - TEXT_MARGIN_TOP - 20
+    current_y = start_y
+
+    for card in cards:
+        card_name = card.get("name", "Unknown Card")
+        mana_cost = card.get("mana_cost", "")
+
+        offset = 0.0
+        if mana_cost:
+            offset = draw_mana_cost_full(c, mana_cost, x + TEXT_MARGIN_LEFT, current_y, icon_map)
+
+        c.drawString(x + TEXT_MARGIN_LEFT + offset, current_y, card_name)
+        current_y -= LINE_SPACING
 
 def create_card(
     c: canvas.Canvas,
@@ -93,52 +148,17 @@ def create_card(
     height: float,
     icon_map: Dict[str, Image.Image],
 ) -> None:
-    # Slight internal margin
-    image_margin = 7
-    c.drawImage(
-        bg_image_path,
-        x,
-        y,
-        width=width,
-        height=height,
-        mask="auto",
-    )
+    draw_card_background(c, bg_image_path, x, y, width, height)
+    draw_card_title(c, booster_id, x, y, width, height)
+    draw_card_list(c, cards, icon_map, x, y, width, height)
 
-    # Internal margins for text
-    text_margin_left = 10
-    text_margin_top = 25
-
-    # Semi-transparent overlay
-    c.saveState()
-    c.setFillColor(colors.whitesmoke)
-    c.setStrokeColor(colors.whitesmoke)
-    c.setFillAlpha(0.7)
-    c.rect(x + image_margin, y + image_margin, width - 2 * image_margin, height - 2 * image_margin, fill=1, stroke=0)
-    c.restoreState()
-
-    # Booster Title: center horizontally
-    c.setFont("Helvetica-Bold", TITLE_FONT_SIZE)
-    c.setFillColor(colors.black)
-    booster_text_width = c.stringWidth(booster_id, "Helvetica-Bold", TITLE_FONT_SIZE)
-    c.drawString(x + (width - booster_text_width) / 2, y + height - text_margin_top, booster_id)
-
-    # List cards
-    c.setFont("Helvetica", FONT_SIZE)
-    line_height = FONT_SIZE + 2
-    text_start_y = y + height - text_margin_top - 20
-    current_y = text_start_y
-
-    for card in cards:
-        card_name = card.get("name", "Unknown Card")
-        mana_cost = card.get("mana_cost", "")
-
-        offset = 0.0
-        if mana_cost:
-            offset = draw_mana_cost_full(c, mana_cost, x + text_margin_left, current_y, icon_map)
-
-        c.drawString(x + text_margin_left + offset, current_y, card_name)
-        current_y -= line_height
-
+def get_background_image_path(most_valuable_card: Dict[str, Any]) -> str:
+    bg_image_path = most_valuable_card.get("image_local_path", "")
+    if not bg_image_path or not os.path.exists(bg_image_path):
+        from cube_list_printer.image_handler import generate_placeholder_image
+        s_id = most_valuable_card.get("scryfall_id", "unknown")
+        bg_image_path = generate_placeholder_image("data/images", s_id)
+    return bg_image_path
 
 def generate_pdf(
     output_path: str,
@@ -147,34 +167,18 @@ def generate_pdf(
     card_width_mm: float,
     card_height_mm: float,
 ) -> None:
-    # Reduce card dimensions slightly to avoid clipping
-    adjusted_card_width_mm = card_width_mm
-    adjusted_card_height_mm = card_height_mm
-
-    cw = mm_to_points(adjusted_card_width_mm)
-    ch = mm_to_points(adjusted_card_height_mm)
-
+    cw = mm_to_points(card_width_mm)
+    ch = mm_to_points(card_height_mm)
     page_width, page_height = A4
-    margin_x = 25
-    margin_y = 25
-
-    cols = 3
-    rows = 3
-
-    # x_spacing = (page_width - 2 * margin_x - cols * cw) / (cols - 1) if cols > 1 else 0
-    # y_spacing = (page_height - 2 * margin_y - rows * ch) / (rows - 1) if rows > 1 else 0
-    x_spacing = 0
-    y_spacing = 0
 
     booster_ids = list(boosters.keys())
-
     c = canvas.Canvas(output_path, pagesize=A4)
     c.setTitle("Booster Cards")
 
     idx = 0
     while idx < len(booster_ids):
-        for row in range(rows):
-            for col in range(cols):
+        for row in range(ROWS):
+            for col in range(COLS):
                 if idx >= len(booster_ids):
                     break
                 booster_id = booster_ids[idx]
@@ -182,18 +186,13 @@ def generate_pdf(
 
                 if booster_cards:
                     most_valuable_card = max(booster_cards, key=lambda x: x.get("value", 0))
-                    bg_image_path = most_valuable_card.get("image_local_path", "")
+                    bg_image_path = get_background_image_path(most_valuable_card)
 
-                    if not bg_image_path or not os.path.exists(bg_image_path):
-                        from cube_list_printer.image_handler import generate_placeholder_image
-
-                        s_id = most_valuable_card.get("scryfall_id", "unknown")
-                        bg_image_path = generate_placeholder_image("data/images", s_id)
-
-                    card_x = margin_x + col * (cw + x_spacing)
-                    card_y = page_height - margin_y - ch - row * (ch + y_spacing)
+                    card_x = MARGIN_X + col * cw
+                    card_y = page_height - MARGIN_Y - ch - row * ch
 
                     create_card(c, booster_id, booster_cards, bg_image_path, card_x, card_y, cw, ch, icon_map)
+
                 idx += 1
         c.showPage()
 

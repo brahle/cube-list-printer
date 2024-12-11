@@ -1,8 +1,9 @@
+cairosvg
 pandas
-requests
 Pillow
+pytest
 PyYAML
 reportlab
-pytest
-types-requests
+requests
 types-PyYAML
+types-requests
