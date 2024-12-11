@@ -7,8 +7,8 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
 
-TITLE_FONT_SIZE = 12
-FONT_SIZE = 8
+TITLE_FONT_SIZE = 14
+FONT_SIZE = 10
 
 
 def mm_to_points(mm_value: float) -> float:
@@ -41,6 +41,7 @@ def draw_mana_cost_segment(
     """
     symbols = mana_cost.strip("{}").split("}{") if "{" in mana_cost else []
     offset_x = 0
+    padding = 2
     icon_size = FONT_SIZE  # icon size in points
 
     for sym in symbols:
@@ -50,14 +51,14 @@ def draw_mana_cost_segment(
             img_reader = ImageReader(icon_map[sym])
             # Bottom align: baseline at y means top of icon at y - 1
             c.drawImage(img_reader, x + offset_x, y - 1, width=icon_size, height=icon_size, mask="auto")
-            offset_x += icon_size + 2
+            offset_x += icon_size + padding
         else:
             # Draw as text
             c.setFont("Helvetica", FONT_SIZE)
             text_width = c.stringWidth(sym, "Helvetica", FONT_SIZE)
             c.drawString(x + offset_x, y, sym)
-            offset_x += text_width + 2
-    return offset_x
+            offset_x += text_width + padding
+    return offset_x - padding
 
 
 def draw_mana_cost_full(
@@ -73,12 +74,12 @@ def draw_mana_cost_full(
     for i, part in enumerate(parts):
         offset_x += draw_mana_cost_segment(c, part, x + offset_x, y, icon_map)
         if i < len(parts) - 1:
-            # Draw ' // '
-            sep = " // "
-            sep_width = c.stringWidth(sep, "Helvetica", 10)
+            # Draw '//'
+            sep = "//"
+            sep_width = c.stringWidth(sep, "Helvetica", FONT_SIZE)
             c.drawString(x + offset_x, y, sep)
-            offset_x += sep_width + 4
-    return offset_x
+            offset_x += sep_width + 2
+    return offset_x + 4
 
 
 def create_card(
@@ -93,13 +94,13 @@ def create_card(
     icon_map: Dict[str, Image.Image],
 ) -> None:
     # Slight internal margin
-    image_margin = 5
+    image_margin = 7
     c.drawImage(
         bg_image_path,
-        x + image_margin,
-        y + image_margin,
-        width=width - 2 * image_margin,
-        height=height - 2 * image_margin,
+        x,
+        y,
+        width=width,
+        height=height,
         mask="auto",
     )
 
@@ -147,21 +148,23 @@ def generate_pdf(
     card_height_mm: float,
 ) -> None:
     # Reduce card dimensions slightly to avoid clipping
-    adjusted_card_width_mm = card_width_mm - 2
-    adjusted_card_height_mm = card_height_mm - 2
+    adjusted_card_width_mm = card_width_mm
+    adjusted_card_height_mm = card_height_mm
 
     cw = mm_to_points(adjusted_card_width_mm)
     ch = mm_to_points(adjusted_card_height_mm)
 
     page_width, page_height = A4
-    margin_x = 50
-    margin_y = 50
+    margin_x = 25
+    margin_y = 25
 
     cols = 3
     rows = 3
 
-    x_spacing = (page_width - 2 * margin_x - cols * cw) / (cols - 1) if cols > 1 else 0
-    y_spacing = (page_height - 2 * margin_y - rows * ch) / (rows - 1) if rows > 1 else 0
+    # x_spacing = (page_width - 2 * margin_x - cols * cw) / (cols - 1) if cols > 1 else 0
+    # y_spacing = (page_height - 2 * margin_y - rows * ch) / (rows - 1) if rows > 1 else 0
+    x_spacing = 0
+    y_spacing = 0
 
     booster_ids = list(boosters.keys())
 
