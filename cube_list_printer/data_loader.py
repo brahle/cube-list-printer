@@ -48,9 +48,23 @@ def enrich_boosters_with_scryfall_data(boosters: Dict[str, Any], scryfall_map: D
                 card["mana_cost"] = card_meta.get("mana_cost", "")
                 card["image_uris"] = card_meta.get("image_uris", {})
                 # Using usd for value, fallback to 0
-                card["value"] = float(card_meta.get("usd", 0.0))
+                card["value"] = get_price(card_meta)
+                logging.info(f"Card value for {card['name']} is ${card['value']:0.2f}")
             else:
                 logging.warning(f"Scryfall data not found for Scryfall ID: {s_id}")
                 card["mana_cost"] = ""
                 card["image_uris"] = {}
                 card["value"] = 0.0
+
+
+def get_price(card_meta: Any) -> float:
+    if "prices" not in card_meta:
+        return 0.0
+    prices = card_meta["prices"]
+    if "usd" in prices and prices["usd"] is not None:
+        return float(prices["usd"])
+    if "usd_foil" in prices and prices["usd_foil"] is not None:
+        return float(prices["usd_foil"])
+    if "usd_etched" in prices and prices["usd_etched"] is not None:
+        return float(prices["usd_etched"])
+    return 0.0
